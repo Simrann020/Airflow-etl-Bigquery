@@ -1,0 +1,84 @@
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 5
+
+  airflow-init:
+    build: .
+    depends_on:
+      - postgres
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+    user: "50000:0"
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        airflow db init
+        airflow users create \
+          --role Admin \
+          --username admin \
+          --password admin \
+          --firstname Simran \
+          --lastname Jadhav \
+          --email simran@example.com
+
+  webserver:
+    build: .
+    depends_on:
+      - postgres
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__WEBSERVER__RBAC: "true"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: 120
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID}
+      BQ_DATASET: ${BQ_DATASET}
+      BQ_TABLE: ${BQ_TABLE}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS}
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - ./data:/opt/airflow/data
+      - ./include:/opt/airflow/include
+    ports:
+      - "8080:8080"
+    command: webserver
+    user: "50000:0"
+
+  scheduler:
+    build: .
+    depends_on:
+      - webserver
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID}
+      BQ_DATASET: ${BQ_DATASET}
+      BQ_TABLE: ${BQ_TABLE}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS}
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - ./data:/opt/airflow/data
+      - ./include:/opt/airflow/include
+    command: scheduler
+    user: "50000:0"
+
+volumes:
+  postgres-db-volume:

@@ -1,0 +1,4 @@
+pickup_datetime,dropoff_datetime,passenger_count,pickup_zone,dropoff_zone,fare_amount,trip_duration_minutes
+2025-01-01 08:00:00,2025-01-01 08:12:00,1,Midtown,Upper East Side,12.5,12.0
+2025-01-01 09:30:00,2025-01-01 09:45:00,2,Financial District,Midtown,18.0,15.0
+2025-01-01 10:05:00,2025-01-01 10:20:30,1,Brooklyn Heights,DUMBO,9.7,15.5
